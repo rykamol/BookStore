@@ -49,7 +49,18 @@ namespace BookStore.web.Areas.Customer.Controllers
 			var claim = claimsIdentity.FindFirst(ClaimTypes.NameIdentifier);
 			shoppingCart.ApplicationUserId = claim.Value;
 
-			_unitOfWork.ShoppingCarts.Create(shoppingCart);
+			var existingCart = _unitOfWork.ShoppingCarts.GetFirstOrDefault(
+				x => x.ApplicationUserId == claim.Value &&
+				x.ProductId == shoppingCart.ProductId);
+			
+			if (existingCart != null)
+			{
+				_unitOfWork.ShoppingCarts.IncrementCount(existingCart,shoppingCart.Count);
+			}
+			else
+			{
+				_unitOfWork.ShoppingCarts.Create(shoppingCart);
+			}
 			_unitOfWork.Save();
 
 			return RedirectToAction(nameof(Index));

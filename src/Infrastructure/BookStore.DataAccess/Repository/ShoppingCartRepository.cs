@@ -15,6 +15,16 @@ namespace BookStore.DataAccess.Repository.IRepository
 		public ShoppingCartRepository(ApplicationDbContext db) : base(db)
 		{
 			_db = db;
-		}		 
+		}
+
+		public void DecrementCount(ShoppingCart shoppingCart, int count)
+		{
+			shoppingCart.Count -= count;
+		}
+
+		public void IncrementCount(ShoppingCart shoppingCart, int count)
+		{
+			shoppingCart.Count += count;
+		}
 	}
 }
