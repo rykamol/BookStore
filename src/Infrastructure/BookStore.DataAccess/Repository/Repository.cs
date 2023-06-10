@@ -18,6 +18,7 @@ namespace BookStore.DataAccess.Repository
 		public Repository(ApplicationDbContext db)
 		{
 			_db = db;
+			//_db.ShoppingCarts.Include(u => u.ProductId);
 			dbSet = _db.Set<T>();
 		}
 
@@ -27,13 +28,15 @@ namespace BookStore.DataAccess.Repository
 		}
 
 		//includeProperties="Product,CoverType"
-		public IEnumerable<T> GetAll(string? includeProperties = null)
+		public IEnumerable<T> GetAll(Expression<Func<T, bool>> filter, string? includeProperties = null)
 		{
 			IQueryable<T> query = dbSet;
 
+			query = query.Where(filter);
+
 			if (includeProperties != null)
 			{
-				foreach(var property in includeProperties.Split(new char[] { ',' },StringSplitOptions.RemoveEmptyEntries))
+				foreach (var property in includeProperties.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
 				{
 					query = query.Include(property);
 
@@ -52,6 +55,8 @@ namespace BookStore.DataAccess.Repository
 		public T GetFirstOrDefault(Expression<Func<T, bool>> filter, string? includeProperties = null)
 		{
 			IQueryable<T> query = dbSet;
+
+			query = query.Where(filter);
 
 			if (includeProperties != null)
 			{

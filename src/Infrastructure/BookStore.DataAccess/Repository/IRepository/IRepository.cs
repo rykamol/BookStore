@@ -7,15 +7,15 @@ using System.Threading.Tasks;
 
 namespace BookStore.DataAccess.Repository.IRepository
 {
-    public interface IRepository<T> where T : class
-    {
-        T GetFirstOrDefault(Expression<Func<T, bool>> filter,string? includeProperties=null);
-        IEnumerable<T> GetAll(string? includeProperties = null);
-        void Create(T entity);
+	public interface IRepository<T> where T : class
+	{
+		T GetFirstOrDefault(Expression<Func<T, bool>> filter, string? includeProperties = null);
+		IEnumerable<T> GetAll(Expression<Func<T, bool>> filter, string? includeProperties = null);
+		void Create(T entity);
 
-        void Delete(T entity);
+		void Delete(T entity);
 
-        void RemoveRange(IEnumerable<T> entities);
+		void RemoveRange(IEnumerable<T> entities);
 
-    }
+	}
 }
