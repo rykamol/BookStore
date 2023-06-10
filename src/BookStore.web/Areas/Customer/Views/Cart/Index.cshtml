@@ -26,15 +26,14 @@
 							<p><span class="text-muted">@Html.Raw(item.Product.Description)</span></p>
 						</div>
 						<div class="col-md-3 col-sm-2 d-flex">
-							<a onclick="this.parentNode.querySelector('input[type=number]').stepDown()">
+							<a asp-action="Plus" asp-route-cartId="@item.Id">
 								<i class="btn btn-primary bi bi-bag-plus"></i>
 							</a>
 
 							<input id="form1" min="0" name="quantity" value="@item.Count" type="number" class="form-control text-center" />
 
-							<a onclick="this.parentNode.querySelector('input[type=number]').stepUp()">
+							<a asp-action="Minus" asp-route-cartId="@item.Id">
 								<i class="btn btn-info bi-calendar2-minus-fill"></i>
-
 							</a>
 						</div>
 						<div class="col-md-2">
@@ -47,7 +46,7 @@
 							</h5>
 						</div>
 						<div class="col-md-1 col-sm-1 text-end">
-							<a href="#!" class="text-danger">
+							<a asp-action="Remove" asp-route-cartId="@item.Id" class="text-danger">
 								<i class="btn btn-danger bi bi-trash"></i>
 							</a>
 						</div>

@@ -42,6 +42,38 @@ namespace BookStore.web.Areas.Customer.Controllers
 			return View(ShoppingCartViewModel);
 		}
 
+
+		public IActionResult Plus(int cartId)
+		{
+			var cart = _unitOfWork.ShoppingCarts.GetFirstOrDefault(c => c.Id == cartId);
+			_unitOfWork.ShoppingCarts.IncrementCount(cart, 1);
+			_unitOfWork.Save();
+			return RedirectToAction(nameof(Index));
+		}
+
+		public IActionResult Minus(int cartId)
+		{
+			var cart = _unitOfWork.ShoppingCarts.GetFirstOrDefault(c => c.Id == cartId);
+			if (cart.Count <= 1)
+			{
+				_unitOfWork.ShoppingCarts.Delete(cart);
+			}
+			else
+			{
+				_unitOfWork.ShoppingCarts.DecrementCount(cart, 1);
+			}
+			_unitOfWork.Save();
+			return RedirectToAction(nameof(Index));
+		}
+
+		public IActionResult Remove(int cartId)
+		{
+			var cart = _unitOfWork.ShoppingCarts.GetFirstOrDefault(c => c.Id == cartId);
+			_unitOfWork.ShoppingCarts.Delete(cart);
+			_unitOfWork.Save();
+			return RedirectToAction(nameof(Index));
+		}
+
 		private double GetPriceByQuantity(int quantity, double price, double Price50, double price100)
 		{
 			if (quantity <= 50)
