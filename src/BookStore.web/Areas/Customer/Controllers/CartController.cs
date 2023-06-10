@@ -36,6 +36,7 @@ namespace BookStore.web.Areas.Customer.Controllers
 			foreach (var item in ShoppingCartViewModel.ShoppingCarts)
 			{
 				item.ProductPrice = GetPriceByQuantity(item.Count, item.Product.Price, item.Product.Price50, item.Product.Price100);
+				ShoppingCartViewModel.TotalCartPrice += (item.Count * item.ProductPrice);
 			}
 
 			return View(ShoppingCartViewModel);
