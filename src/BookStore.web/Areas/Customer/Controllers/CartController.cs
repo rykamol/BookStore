@@ -33,7 +33,28 @@ namespace BookStore.web.Areas.Customer.Controllers
 					includeProperties: "Product")
 			};
 
+			foreach (var item in ShoppingCartViewModel.ShoppingCarts)
+			{
+				item.ProductPrice = GetPriceByQuantity(item.Count, item.Product.Price, item.Product.Price50, item.Product.Price100);
+			}
+
 			return View(ShoppingCartViewModel);
+		}
+
+		private double GetPriceByQuantity(int quantity, double price, double Price50, double price100)
+		{
+			if (quantity <= 50)
+			{
+				return price;
+			}
+			else
+			{
+				if (quantity <= 100)
+				{
+					return Price50;
+				}
+				return price100;
+			}
 		}
 	}
 }

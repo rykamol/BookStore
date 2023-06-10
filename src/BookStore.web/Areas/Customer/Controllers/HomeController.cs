@@ -22,7 +22,7 @@ namespace BookStore.web.Areas.Customer.Controllers
 
 		public IActionResult Index()
 		{
-			var productList = _unitOfWork.Products.GetAll("Category,CoverType");
+			var productList = _unitOfWork.Products.GetAll(includeProperties:"Category,CoverType");
 			return View(productList);
 		}
 
