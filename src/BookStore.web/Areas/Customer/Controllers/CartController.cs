@@ -1,5 +1,7 @@
 ﻿using BookStore.DataAccess.Repository.IRepository;
+using BookStore.Domain.Models;
 using BookStore.Domain.ViewModels;
+using BookStore.Utility;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -12,6 +14,7 @@ namespace BookStore.web.Areas.Customer.Controllers
 	{
 		private readonly IUnitOfWork _unitOfWork;
 
+		[BindProperty]
 		public ShoppingCartViewModel ShoppingCartViewModel { get; set; }
 		public CartController(IUnitOfWork unitOfWork)
 		{
@@ -77,6 +80,53 @@ namespace BookStore.web.Areas.Customer.Controllers
 
 			//return View(ShoppingCartViewModel);
 			return View(ShoppingCartViewModel);
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		[ActionName("Summary")]
+		public IActionResult SummaryPost()
+		{
+			var claimsIdentity = (ClaimsIdentity)User.Identity;
+			var claim = claimsIdentity?.FindFirst(ClaimTypes.NameIdentifier);
+
+
+			ShoppingCartViewModel.ShoppingCarts = _unitOfWork.ShoppingCarts.GetAll(
+				u => u.ApplicationUserId == claim.Value,
+				includeProperties: "Product");
+
+
+			ShoppingCartViewModel.OrderHeader.PaymentStatus = SD.PaymentStatusPending.ToString();
+			ShoppingCartViewModel.OrderHeader.OrderStatus = SD.StatusPending.ToString();
+			ShoppingCartViewModel.OrderHeader.OrderDate = System.DateTime.Now;
+			ShoppingCartViewModel.OrderHeader.ApplicationUserId = claim.Value;
+
+			foreach (var item in ShoppingCartViewModel.ShoppingCarts)
+			{
+				item.ProductPrice = GetPriceByQuantity(item.Count, item.Product.Price, item.Product.Price50, item.Product.Price100);
+				ShoppingCartViewModel.OrderHeader.OrderTotal += (item.Count * item.ProductPrice);
+			}
+
+			_unitOfWork.OrderHeaders.Create(ShoppingCartViewModel.OrderHeader);
+			_unitOfWork.Save();
+
+			foreach (var item in ShoppingCartViewModel.ShoppingCarts)
+			{
+				OrderDetail orderDetail = new()
+				{
+					ProductId = item.ProductId,
+					OrderHeaderId = ShoppingCartViewModel.OrderHeader.Id,
+					Price = item.ProductPrice,
+					Count = item.Count
+				};
+				_unitOfWork.OrderDetails.Create(orderDetail);
+				_unitOfWork.Save();
+			}
+
+			_unitOfWork.ShoppingCarts.RemoveRange(ShoppingCartViewModel.ShoppingCarts);
+			_unitOfWork.Save();
+
+			return RedirectToAction("Index");
 		}
 
 		public IActionResult Plus(int cartId)
