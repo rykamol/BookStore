@@ -20,6 +20,7 @@ namespace BookStore.DataAccess.Repository.IRepository
 			Companies = new CompanyRepository(_db);
 			ShoppingCarts = new ShoppingCartRepository(_db);
 			ApplicatiionUsers = new ApplicationuserRepository(_db);
+			OrderHeaders = new OrderHeaderRepository(_db);
 		}
 
 		public ICategoryRepository Category { get; private set; }
@@ -28,8 +29,10 @@ namespace BookStore.DataAccess.Repository.IRepository
 		public ICompanyRepository Companies { get; private set; }
 
 		public IShoppingCartRepository ShoppingCarts { get; private set; }
+		public IOrderHeaderRepository OrderHeaders { get; private set; }
 
 		public IApplicatiionUserRepository ApplicatiionUsers { get; private set; }
+
 
 		public void Save()
 		{
