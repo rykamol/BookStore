@@ -21,6 +21,7 @@ namespace BookStore.DataAccess.Repository.IRepository
 			ShoppingCarts = new ShoppingCartRepository(_db);
 			ApplicatiionUsers = new ApplicationuserRepository(_db);
 			OrderHeaders = new OrderHeaderRepository(_db);
+			OrderDetails = new OrderDetailsRepository(_db);
 		}
 
 		public ICategoryRepository Category { get; private set; }
@@ -33,6 +34,7 @@ namespace BookStore.DataAccess.Repository.IRepository
 
 		public IApplicatiionUserRepository ApplicatiionUsers { get; private set; }
 
+		public IOrderDetailsRepository OrderDetails { get; private set; }
 
 		public void Save()
 		{
