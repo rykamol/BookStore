@@ -4,7 +4,10 @@ using BookStore.Domain.ViewModels;
 using BookStore.Utility;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Stripe;
+using Stripe.Checkout;
 using System.Security.Claims;
+using static System.Net.WebRequestMethods;
 
 namespace BookStore.web.Areas.Customer.Controllers
 {
@@ -16,6 +19,8 @@ namespace BookStore.web.Areas.Customer.Controllers
 
 		[BindProperty]
 		public ShoppingCartViewModel ShoppingCartViewModel { get; set; }
+
+
 		public CartController(IUnitOfWork unitOfWork)
 		{
 			_unitOfWork = unitOfWork;
@@ -123,11 +128,53 @@ namespace BookStore.web.Areas.Customer.Controllers
 				_unitOfWork.Save();
 			}
 
-			_unitOfWork.ShoppingCarts.RemoveRange(ShoppingCartViewModel.ShoppingCarts);
-			_unitOfWork.Save();
+			var domain = "https://localhost:44339/";
+			var options = new SessionCreateOptions
+			{
+				PaymentMethodTypes = new List<string>
+				{
+					"card"
+				},
+				LineItems = new List<SessionLineItemOptions>(),
+				Mode = "payment",
+				SuccessUrl = domain + $"customer/cart/OrderConfirmation?id={ShoppingCartViewModel.OrderHeader.Id}",
+				CancelUrl = domain + $"customer/cart/Index",
+			};
 
-			return RedirectToAction("Index");
+			foreach (var item in ShoppingCartViewModel.ShoppingCarts)
+			{
+
+				var sessionLineItem = new SessionLineItemOptions
+				{
+					PriceData = new SessionLineItemPriceDataOptions
+					{
+						UnitAmount = (long)(double)item.ProductPrice * 100,
+						Currency = "usd",
+						ProductData = new SessionLineItemPriceDataProductDataOptions
+						{
+							Name = item.Product?.Title
+						},
+					},
+					Quantity = item.Count
+				};
+
+				options.LineItems.Add(sessionLineItem);
+			}
+
+			var service = new SessionService();
+			Session session = service.Create(options);
+			_unitOfWork.OrderHeaders.UpdateStripePaymentId(ShoppingCartViewModel.OrderHeader.Id, session.Id, session.PaymentIntentId);
+			_unitOfWork.Save();
+			Response.Headers.Add("Location", session.Url);
+			return new StatusCodeResult(303);
+
+			//_unitOfWork.ShoppingCarts.RemoveRange(ShoppingCartViewModel.ShoppingCarts);
+			//_unitOfWork.Save();
+
+			//return RedirectToAction("Index");
 		}
+
+
 
 		public IActionResult Plus(int cartId)
 		{
@@ -175,5 +222,30 @@ namespace BookStore.web.Areas.Customer.Controllers
 				return price100;
 			}
 		}
+
+
+
+
+
+		public IActionResult OrderConfirmation(int id)
+		{
+			var orderHeader = _unitOfWork.OrderHeaders.GetFirstOrDefault(x => x.Id == id);
+
+			var service = new SessionService();
+			var session = service.Get(orderHeader.SeassionId);
+			if (session.PaymentStatus.ToLower() == "paid")
+			{
+				_unitOfWork.OrderHeaders.UpdateOrderStatus(id, SD.StatusApprove, SD.PaymentStatusApproved);
+				_unitOfWork.Save();
+			}
+			var shoppingCarts = _unitOfWork.ShoppingCarts.GetAll(u => u.ApplicationUserId == orderHeader.ApplicationUserId).ToList();
+			_unitOfWork.ShoppingCarts.RemoveRange(shoppingCarts);
+			_unitOfWork.Save();
+
+			return View(id);
+
+			//checked the stripe status
+		}
 	}
 }
+

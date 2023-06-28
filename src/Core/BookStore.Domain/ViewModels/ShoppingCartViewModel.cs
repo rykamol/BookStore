@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace BookStore.Domain.ViewModels
 {
-	public class ShoppingCartViewModel
+    public class ShoppingCartViewModel
 	{
 		public IEnumerable<ShoppingCart> ShoppingCarts { get; set; }
 

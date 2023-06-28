@@ -1,6 +1,5 @@
 ﻿using BookStore.DataAccess.Repository.IRepository;
 using BookStore.Domain.Models;
-using BookStore.Domain.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
@@ -8,7 +7,7 @@ using System.Security.Claims;
 
 namespace BookStore.web.Areas.Customer.Controllers
 {
-	[Area("Customer")]
+    [Area("Customer")]
 	public class HomeController : Controller
 	{
 		private readonly IUnitOfWork _unitOfWork;

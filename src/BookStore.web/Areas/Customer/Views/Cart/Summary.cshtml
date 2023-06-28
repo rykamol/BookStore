@@ -1,4 +1,8 @@
-﻿@model ShoppingCartViewModel
+﻿@*@using BookStore.Utility;
+@using Microsoft.Extensions.Options;*@
+
+@model ShoppingCartViewModel;
+ IOptions<StripeSettings> Stripe
 
 <form method="post">
 	<br />
