@@ -1,10 +1,14 @@
 ﻿using BookStore.DataAccess.Repository.IRepository;
+using BookStore.Domain.Models;
 using BookStore.Utility;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace BookStore.web.Areas.Admin.Controllers
 {
 	[Area("Admin")]
+	[Authorize]
 	public class OrderController : Controller
 	{
 		private readonly IUnitOfWork _unitOfWork;
@@ -20,7 +24,18 @@ namespace BookStore.web.Areas.Admin.Controllers
 		#region  API CALLS
 		public IActionResult GetAll(string status)
 		{
-			var orderHeader = _unitOfWork.OrderHeaders.GetAll(includeProperties: "ApplicationUser");
+			IEnumerable<OrderHeader> orderHeader;
+
+			if (User.IsInRole(SD.Role_User_Admin) || User.IsInRole(SD.Role_User_Employee))
+			{
+				orderHeader = _unitOfWork.OrderHeaders.GetAll(includeProperties: "ApplicationUser");
+			}
+			else
+			{
+				var claimsIdentity = User.Identity as ClaimsIdentity;
+				var claim = claimsIdentity?.FindFirst(ClaimTypes.NameIdentifier);
+				orderHeader = _unitOfWork.OrderHeaders.GetAll(u => u.ApplicationUserId == claim.Value, includeProperties: "ApplicationUser");
+			}
 
 			switch (status)
 			{
