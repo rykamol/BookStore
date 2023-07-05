@@ -1,4 +1,5 @@
 ﻿using BookStore.DataAccess.Repository.IRepository;
+using BookStore.Utility;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BookStore.web.Areas.Admin.Controllers
@@ -17,9 +18,30 @@ namespace BookStore.web.Areas.Admin.Controllers
 		}
 
 		#region  API CALLS
-		public IActionResult GetAll()
+		public IActionResult GetAll(string status)
 		{
 			var orderHeader = _unitOfWork.OrderHeaders.GetAll(includeProperties: "ApplicationUser");
+
+			switch (status)
+			{
+				case "pending":
+					orderHeader = orderHeader.Where(u => u.PaymentStatus == SD.PaymentStatusDelayedPayment);
+					break;
+
+				case "inprogress":
+					orderHeader = orderHeader.Where(u => u.PaymentStatus == SD.StatusInProgress);
+					break;
+
+				case "completed":
+					orderHeader = orderHeader.Where(u => u.PaymentStatus == SD.StatusShipped);
+					break;
+				case "approved":
+					orderHeader = orderHeader.Where(u => u.PaymentStatus == SD.StatusApprove);
+					break;
+
+				default:
+					break;
+			}
 			return Json(new { data = orderHeader });
 		}
 		#endregion
