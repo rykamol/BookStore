@@ -5,6 +5,7 @@ using BookStore.Utility;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Stripe;
+using Stripe.Checkout;
 using System.Security.Claims;
 
 namespace BookStore.web.Areas.Admin.Controllers
@@ -98,7 +99,7 @@ namespace BookStore.web.Areas.Admin.Controllers
 			orderHeader.Carrier = orderViewModel.OrderHeader.Carrier;
 			orderHeader.OrderStatus = SD.StatusShipped;
 			orderHeader.ShippingDate = DateTime.Now;
-			if(orderHeader.PaymentStatus == SD.PaymentStatusDelayedPayment)
+			if (orderHeader.PaymentStatus == SD.PaymentStatusDelayedPayment)
 			{
 				orderHeader.PaymentDueDate = DateTime.Now.AddDays(30);
 			}
@@ -126,8 +127,8 @@ namespace BookStore.web.Areas.Admin.Controllers
 				{
 					Reason = RefundReasons.RequestedByCustomer,
 					PaymentIntent = orderHeader.PaymentIntentId,
-				}; 
-				
+				};
+
 				var service = new RefundService();
 				var refund = service.Create(options);
 
@@ -142,6 +143,84 @@ namespace BookStore.web.Areas.Admin.Controllers
 			TempData["Success"] = $"Order Canceled Successfully";
 			return RedirectToAction("Details", "Order", new { orderId = orderViewModel.OrderHeader.Id });
 		}
+
+
+
+		[HttpPost]
+		[Authorize(Roles = SD.Role_User_Admin + "," + SD.Role_User_Employee)]
+		[ValidateAntiForgeryToken]
+		public IActionResult PayNow()
+		{
+			orderViewModel.OrderHeader = _unitOfWork.OrderHeaders.GetFirstOrDefault(u => u.Id == orderViewModel.OrderHeader.Id, includeProperties: "ApplicationUser");
+			orderViewModel.OrderDetails = _unitOfWork.OrderDetails.GetAll(u => u.OrderHeaderId == orderViewModel.OrderHeader.Id, includeProperties: "Product");
+
+			var domain = "https://localhost:44339/";
+			var options = new SessionCreateOptions
+			{
+				PaymentMethodTypes = new List<string>
+				{
+					"card"
+				},
+				LineItems = new List<SessionLineItemOptions>(),
+				Mode = "payment",
+				SuccessUrl = domain + $"admin/order/PaymentConfirmation?orderHeaderId={orderViewModel.OrderHeader.Id}",
+				CancelUrl = domain + $"admin/order/details/orderId={orderViewModel.OrderHeader.Id}",
+			};
+
+			foreach (var item in orderViewModel.OrderDetails)
+			{
+
+				var sessionLineItem = new SessionLineItemOptions
+				{
+					PriceData = new SessionLineItemPriceDataOptions
+					{
+						UnitAmount = (long)(double)item.Price * 100,
+						Currency = "usd",
+						ProductData = new SessionLineItemPriceDataProductDataOptions
+						{
+							Name = item.Product?.Title
+						},
+					},
+					Quantity = item.Count
+				};
+
+				options.LineItems.Add(sessionLineItem);
+			}
+
+			var service = new SessionService();
+			Session session = service.Create(options);
+			_unitOfWork.OrderHeaders.UpdateStripePaymentId(orderViewModel.OrderHeader.Id, session.Id);
+			_unitOfWork.Save();
+			Response.Headers.Add("Location", session.Url);
+			return new StatusCodeResult(303);			 
+		}
+
+
+
+		public IActionResult PaymentConfirmation(int orderHeaderId)
+		{
+			var orderHeader = _unitOfWork.OrderHeaders.GetFirstOrDefault(x => x.Id == orderHeaderId);
+
+			if (orderHeader.PaymentStatus == SD.PaymentStatusDelayedPayment)
+			{
+				var service = new SessionService();
+				var session = service.Get(orderHeader.SeassionId);
+
+				var paymentIntentId = session.PaymentIntentId;
+
+				if (session.PaymentStatus.ToLower() == "paid")
+				{
+					_unitOfWork.OrderHeaders.UpdateOrderStatus(orderHeaderId, orderHeader.OrderStatus, SD.PaymentStatusApproved, paymentIntentId);
+					_unitOfWork.Save();
+				}
+			}
+
+			return View(orderHeaderId);
+
+			//checked the stripe status
+		}
+
+
 		#region  API CALLS
 		public IActionResult GetAll(string status)
 		{
