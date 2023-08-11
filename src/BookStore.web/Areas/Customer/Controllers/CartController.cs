@@ -101,8 +101,7 @@ namespace BookStore.web.Areas.Customer.Controllers
 				includeProperties: "Product");
 
 
-			ShoppingCartViewModel.OrderHeader.PaymentStatus = SD.PaymentStatusPending.ToString();
-			ShoppingCartViewModel.OrderHeader.OrderStatus = SD.StatusPending.ToString();
+
 			ShoppingCartViewModel.OrderHeader.OrderDate = System.DateTime.Now;
 			ShoppingCartViewModel.OrderHeader.ApplicationUserId = claim.Value;
 
@@ -110,6 +109,19 @@ namespace BookStore.web.Areas.Customer.Controllers
 			{
 				item.ProductPrice = GetPriceByQuantity(item.Count, item.Product.Price, item.Product.Price50, item.Product.Price100);
 				ShoppingCartViewModel.OrderHeader.OrderTotal += (item.Count * item.ProductPrice);
+			}
+
+			var applicationUser = _unitOfWork.ApplicatiionUsers.GetFirstOrDefault(u => u.Id == claim.Value);
+			if (applicationUser.CompanyId.GetValueOrDefault() == 0)
+			{
+				ShoppingCartViewModel.OrderHeader.PaymentStatus = SD.PaymentStatusPending.ToString();
+				ShoppingCartViewModel.OrderHeader.OrderStatus = SD.StatusPending.ToString();
+			}
+			else
+			{
+
+				ShoppingCartViewModel.OrderHeader.PaymentStatus = SD.PaymentStatusDelayedPayment.ToString();
+				ShoppingCartViewModel.OrderHeader.OrderStatus = SD.StatusApprove.ToString();
 			}
 
 			_unitOfWork.OrderHeaders.Create(ShoppingCartViewModel.OrderHeader);
@@ -128,45 +140,55 @@ namespace BookStore.web.Areas.Customer.Controllers
 				_unitOfWork.Save();
 			}
 
-			var domain = "https://localhost:44339/";
-			var options = new SessionCreateOptions
+
+			if (applicationUser.CompanyId.GetValueOrDefault() == 0)
 			{
-				PaymentMethodTypes = new List<string>
+
+
+				var domain = "https://localhost:44339/";
+				var options = new SessionCreateOptions
+				{
+					PaymentMethodTypes = new List<string>
 				{
 					"card"
 				},
-				LineItems = new List<SessionLineItemOptions>(),
-				Mode = "payment",
-				SuccessUrl = domain + $"customer/cart/OrderConfirmation?id={ShoppingCartViewModel.OrderHeader.Id}",
-				CancelUrl = domain + $"customer/cart/Index",
-			};
-
-			foreach (var item in ShoppingCartViewModel.ShoppingCarts)
-			{
-
-				var sessionLineItem = new SessionLineItemOptions
-				{
-					PriceData = new SessionLineItemPriceDataOptions
-					{
-						UnitAmount = (long)(double)item.ProductPrice * 100,
-						Currency = "usd",
-						ProductData = new SessionLineItemPriceDataProductDataOptions
-						{
-							Name = item.Product?.Title
-						},
-					},
-					Quantity = item.Count
+					LineItems = new List<SessionLineItemOptions>(),
+					Mode = "payment",
+					SuccessUrl = domain + $"customer/cart/OrderConfirmation?id={ShoppingCartViewModel.OrderHeader.Id}",
+					CancelUrl = domain + $"customer/cart/Index",
 				};
 
-				options.LineItems.Add(sessionLineItem);
-			}
+				foreach (var item in ShoppingCartViewModel.ShoppingCarts)
+				{
 
-			var service = new SessionService();
-			Session session = service.Create(options);
-			_unitOfWork.OrderHeaders.UpdateStripePaymentId(ShoppingCartViewModel.OrderHeader.Id, session.Id, session.PaymentIntentId);
-			_unitOfWork.Save();
-			Response.Headers.Add("Location", session.Url);
-			return new StatusCodeResult(303);
+					var sessionLineItem = new SessionLineItemOptions
+					{
+						PriceData = new SessionLineItemPriceDataOptions
+						{
+							UnitAmount = (long)(double)item.ProductPrice * 100,
+							Currency = "usd",
+							ProductData = new SessionLineItemPriceDataProductDataOptions
+							{
+								Name = item.Product?.Title
+							},
+						},
+						Quantity = item.Count
+					};
+
+					options.LineItems.Add(sessionLineItem);
+				}
+
+				var service = new SessionService();
+				Session session = service.Create(options);
+				_unitOfWork.OrderHeaders.UpdateStripePaymentId(ShoppingCartViewModel.OrderHeader.Id, session.Id);
+				_unitOfWork.Save();
+				Response.Headers.Add("Location", session.Url);
+				return new StatusCodeResult(303);
+			}
+			else
+			{
+				return RedirectToAction("OrderConfirmation", "Cart", new { id = ShoppingCartViewModel.OrderHeader.Id });
+			}
 
 			//_unitOfWork.ShoppingCarts.RemoveRange(ShoppingCartViewModel.ShoppingCarts);
 			//_unitOfWork.Save();
@@ -223,21 +245,26 @@ namespace BookStore.web.Areas.Customer.Controllers
 			}
 		}
 
-
-
-
-
 		public IActionResult OrderConfirmation(int id)
 		{
 			var orderHeader = _unitOfWork.OrderHeaders.GetFirstOrDefault(x => x.Id == id);
 
-			var service = new SessionService();
-			var session = service.Get(orderHeader.SeassionId);
-			if (session.PaymentStatus.ToLower() == "paid")
+			if(orderHeader.PaymentStatus != SD.PaymentStatusDelayedPayment)
 			{
-				_unitOfWork.OrderHeaders.UpdateOrderStatus(id, SD.StatusApprove, SD.PaymentStatusApproved);
-				_unitOfWork.Save();
+
+				var service = new SessionService();
+				var session = service.Get(orderHeader.SeassionId);
+
+				var paymentIntentId = session.PaymentIntentId;
+
+				if (session.PaymentStatus.ToLower() == "paid")
+				{
+					_unitOfWork.OrderHeaders.UpdateOrderStatus(id, SD.StatusApprove, SD.PaymentStatusApproved, paymentIntentId);
+					_unitOfWork.Save();
+				}
 			}
+
+		
 			var shoppingCarts = _unitOfWork.ShoppingCarts.GetAll(u => u.ApplicationUserId == orderHeader.ApplicationUserId).ToList();
 			_unitOfWork.ShoppingCarts.RemoveRange(shoppingCarts);
 			_unitOfWork.Save();
