@@ -180,7 +180,7 @@ namespace BookStore.web.Areas.Customer.Controllers
 
 				var service = new SessionService();
 				Session session = service.Create(options);
-				_unitOfWork.OrderHeaders.UpdateStripePaymentId(ShoppingCartViewModel.OrderHeader.Id, session.Id, session.PaymentIntentId);
+				_unitOfWork.OrderHeaders.UpdateStripePaymentId(ShoppingCartViewModel.OrderHeader.Id, session.Id);
 				_unitOfWork.Save();
 				Response.Headers.Add("Location", session.Url);
 				return new StatusCodeResult(303);
@@ -251,11 +251,15 @@ namespace BookStore.web.Areas.Customer.Controllers
 
 			if(orderHeader.PaymentStatus != SD.PaymentStatusDelayedPayment)
 			{
+
 				var service = new SessionService();
 				var session = service.Get(orderHeader.SeassionId);
+
+				var paymentIntentId = session.PaymentIntentId;
+
 				if (session.PaymentStatus.ToLower() == "paid")
 				{
-					_unitOfWork.OrderHeaders.UpdateOrderStatus(id, SD.StatusApprove, SD.PaymentStatusApproved);
+					_unitOfWork.OrderHeaders.UpdateOrderStatus(id, SD.StatusApprove, SD.PaymentStatusApproved, paymentIntentId);
 					_unitOfWork.Save();
 				}
 			}
