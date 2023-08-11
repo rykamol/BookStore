@@ -1,5 +1,6 @@
 ﻿using BookStore.DataAccess.Repository.IRepository;
 using BookStore.Domain.Models;
+using BookStore.Domain.ViewModels;
 using BookStore.Utility;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +13,9 @@ namespace BookStore.web.Areas.Admin.Controllers
 	public class OrderController : Controller
 	{
 		private readonly IUnitOfWork _unitOfWork;
+
+		[BindProperty]
+		public OrderViewModel orderViewModel { get; set; }
 		public OrderController(IUnitOfWork unitOfWork)
 		{
 			_unitOfWork = unitOfWork;
@@ -19,6 +23,49 @@ namespace BookStore.web.Areas.Admin.Controllers
 		public IActionResult Index()
 		{
 			return View();
+		}
+
+		public IActionResult Details(int orderId)
+		{
+			orderViewModel = new OrderViewModel()
+			{
+				OrderHeader = _unitOfWork.OrderHeaders.GetFirstOrDefault(u => u.Id == orderId, includeProperties: "ApplicationUser"),
+				OrderDetails = _unitOfWork.OrderDetails.GetAll(u => u.OrderHeaderId == orderId, includeProperties: "Product")
+			};
+
+			return View(orderViewModel);
+		}
+
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public IActionResult UpdateOrderDetail()
+		{
+			var orderHeader = _unitOfWork.OrderHeaders.GetFirstOrDefault(u => u.Id == orderViewModel.OrderHeader.Id);
+			orderHeader.Name = orderViewModel.OrderHeader.Name;
+			orderHeader.PhoneNumer = orderViewModel.OrderHeader.PhoneNumer;
+			orderHeader.State = orderViewModel.OrderHeader.State;
+			orderHeader.StreetAddress = orderViewModel.OrderHeader.StreetAddress;
+			orderHeader.City = orderViewModel.OrderHeader.City;
+			orderHeader.PostalCode = orderViewModel.OrderHeader.PostalCode;
+
+			if (orderViewModel.OrderHeader.Carrier != null)
+			{
+				orderHeader.Carrier = orderViewModel.OrderHeader.Carrier;
+			}
+
+			if (orderViewModel.OrderHeader.TrackingNumer != null)
+			{
+				orderHeader.Carrier = orderViewModel.OrderHeader.TrackingNumer;
+			}
+
+
+			_unitOfWork.OrderHeaders.Update(orderHeader);
+			_unitOfWork.Save();
+
+			TempData["Success"] = $"Order Details Updated Successfully";
+
+			return RedirectToAction("Details", "Order", new { orderId = orderHeader.Id });
 		}
 
 		#region  API CALLS

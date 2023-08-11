@@ -53,6 +53,8 @@ namespace BookStore.Domain.Models
 
 		[Required]
 		public string PhoneNumer { get; set; }
+		public string? TrackingNumer { get; set; }
+		public string? Carrier { get; set; }
 
 	}
 }

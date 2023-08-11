@@ -39,7 +39,7 @@ namespace BookStore.DataAccess.Repository.IRepository
 		public void UpdateStripePaymentId(int id, string sessionId, string paymentIntentId)
 		{
 			var orderFromDb = _db.OrderHeaders.FirstOrDefault(x => x.Id == id);
-			
+			orderFromDb.PaymentDate=DateTime.Now;
 			orderFromDb.SeassionId = sessionId;
 			orderFromDb.PaymentIntentId = paymentIntentId;
 		}
