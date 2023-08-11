@@ -68,6 +68,40 @@ namespace BookStore.web.Areas.Admin.Controllers
 			return RedirectToAction("Details", "Order", new { orderId = orderHeader.Id });
 		}
 
+
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public IActionResult StartProcessing()
+		{
+			var orderHeader = _unitOfWork.OrderHeaders.GetFirstOrDefault(u => u.Id == orderViewModel.OrderHeader.Id);
+			_unitOfWork.OrderHeaders.UpdateOrderStatus(orderViewModel.OrderHeader.Id,SD.StatusInProgress);
+			_unitOfWork.Save();
+
+			TempData["Success"] = $"Order Status Updated Successfully";
+
+			return RedirectToAction("Details", "Order", new { orderId = orderViewModel.OrderHeader.Id });
+		}
+
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public IActionResult ShipOrder()
+		{
+			var orderHeader = _unitOfWork.OrderHeaders.GetFirstOrDefault(u => u.Id == orderViewModel.OrderHeader.Id);
+
+			orderHeader.TrackingNumer = orderViewModel.OrderHeader.TrackingNumer;
+			orderHeader.Carrier = orderViewModel.OrderHeader.Carrier;
+			orderHeader.OrderStatus = SD.StatusShipped;
+			orderHeader.ShippingDate = DateTime.Now;
+
+			_unitOfWork.OrderHeaders.Update(orderHeader);
+			_unitOfWork.Save();
+
+			TempData["Success"] = $"Order Shipped Successfully";
+
+			return RedirectToAction("Details", "Order", new { orderId = orderViewModel.OrderHeader.Id });
+		}
 		#region  API CALLS
 		public IActionResult GetAll(string status)
 		{
